@@ -1,87 +1,263 @@
 import tkinter as tk
-from tkinter import messagebox, filedialog
-from converter.core import convert_to_binary, convert_to_octal, convert_to_decimal, convert_to_hexadecimal
-from converter.file_handler import save_results
+from tkinter import messagebox, ttk, filedialog
+from converter.core import (
+    convert_to_binary,
+    convert_to_octal,
+    convert_to_decimal,
+    convert_to_hexadecimal,
+)
 
 class ConverterApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Конвертація чисел")
-        self.root.geometry("600x400")
-        self.root.configure(bg="#F5F5F5")
+        self.root.title("Конвертер систем числення")
+        self.root.geometry("1100x900")  # Початковий розмір вікна
+        self.root.minsize(600, 500)  # Мінімальний розмір вікна
+        self.root.resizable(True, True)  # Дозволяємо змінювати розміри вікна
 
-        # Заголовок
-        tk.Label(self.root, text="Конвертація чисел", font=("Arial", 18, "bold"), bg="#F5F5F5", fg="#333333").pack(pady=10)
+        # Стиль для кнопок і чекбоксів
+        self.style = ttk.Style()
+        self.style.configure("TButton", font=("Arial", 18), padding=15, background="#4CAF50", foreground="white")
+        self.style.configure("TCheckbutton", font=("Arial", 18), padding=15)
+        self.style.map("TButton", background=[('active', '#45a049'), ('pressed', '#387f36')])
 
-        # Поля введення
-        self.frame_input = tk.Frame(self.root, bg="#F5F5F5")
-        self.frame_input.pack(pady=10)
+        # Стиль для кнопки очищення
+        self.style.configure("ClearButton.TButton", font=("Arial", 18), padding=15, background="#FF5733", foreground="white")
+        self.style.map("ClearButton.TButton", background=[('active', '#FF7043'), ('pressed', '#D63C29')])
 
-        tk.Label(self.frame_input, text="Число:", bg="#F5F5F5", font=("Arial", 12)).grid(row=0, column=0, padx=5, pady=5)
-        self.entry_number = tk.Entry(self.frame_input, font=("Arial", 12), width=20)
-        self.entry_number.grid(row=0, column=1, padx=5, pady=5)
+        # Створення меню
+        self.create_menu()
 
-        tk.Label(self.frame_input, text="Система (2, 8, 10, 16):", bg="#F5F5F5", font=("Arial", 12)).grid(row=1, column=0, padx=5, pady=5)
-        self.entry_base = tk.Entry(self.frame_input, font=("Arial", 12), width=20)
-        self.entry_base.grid(row=1, column=1, padx=5, pady=5)
+        # Контейнер для сторінок
+        self.page_frame = ttk.Frame(root, padding=30)
+        self.page_frame.pack(fill=tk.BOTH, expand=True)
+
+        # Початкова сторінка (Основна сторінка)
+        self.show_main_page()
+
+    def create_menu(self):
+        menubar = tk.Menu(self.root)
+        self.root.config(menu=menubar)
+
+        page_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Сторінки", menu=page_menu)
+        page_menu.add_command(label="Основна сторінка", command=self.show_main_page)
+        page_menu.add_command(label="Переведення чисел вручну", command=self.show_manual_conversion_page)
+        page_menu.add_command(label="Переведення чисел з файлу", command=self.show_file_conversion_page)
+
+    def show_main_page(self):
+        """Показати основну сторінку"""
+        # Очищаємо поточний фрейм
+        for widget in self.page_frame.winfo_children():
+            widget.destroy()
+
+        # Заголовок основної сторінки
+        title_label = ttk.Label(self.page_frame, text="Конвертер систем числення", font=("Arial", 24, "bold"))
+        title_label.pack(pady=30)
+
+        description_label = ttk.Label(self.page_frame, text="Це додаток для переведення чисел між різними системами числення.\n"
+                                                           "Ви можете вибрати одну з двох опцій:\n"
+                                                           "1. Переведення чисел вручну\n"
+                                                           "2. Переведення чисел з файлів", font=("Arial", 18))
+        description_label.pack(pady=20)
+
+        manual_button = ttk.Button(self.page_frame, text="Переведення чисел вручну", command=self.show_manual_conversion_page, style="TButton")
+        manual_button.pack(pady=10)
+
+        file_button = ttk.Button(self.page_frame, text="Переведення чисел з файлу", command=self.show_file_conversion_page, style="TButton")
+        file_button.pack(pady=10)
+
+    def show_manual_conversion_page(self):
+        """Показати сторінку для переведення чисел вручну"""
+        # Очищаємо поточний фрейм
+        for widget in self.page_frame.winfo_children():
+            widget.destroy()
+
+        # Заголовок сторінки
+        title_label = ttk.Label(self.page_frame, text="Переведення чисел вручну", font=("Arial", 24, "bold"))
+        title_label.pack(pady=30)
+
+        # Поле вводу числа
+        input_frame = ttk.Frame(self.page_frame)
+        input_frame.pack(fill=tk.X, pady=20)
+
+        input_label = ttk.Label(input_frame, text="Введіть число (десяткове):", font=("Arial", 18))
+        input_label.pack(side=tk.LEFT, padx=10)
+
+        self.input_entry = ttk.Entry(input_frame, font=("Arial", 18), width=25)
+        self.input_entry.pack(side=tk.LEFT, padx=10, ipadx=10)
+
+        # Чекбокси для вибору систем числення
+        self.system_vars = {
+            "Двійкова": tk.IntVar(value=0),
+            "Вісімкова": tk.IntVar(value=0),
+            "Десяткова": tk.IntVar(value=1),
+            "Шістнадцяткова": tk.IntVar(value=0),
+        }
+
+        checkbox_frame = ttk.Frame(self.page_frame)
+        checkbox_frame.pack(fill=tk.X, pady=20)
+
+        ttk.Label(checkbox_frame, text="Виберіть системи числення для переведення:", font=("Arial", 18)).pack(anchor=tk.W, pady=5)
+
+        for system, var in self.system_vars.items():
+            ttk.Checkbutton(checkbox_frame, text=system, variable=var, style="TCheckbutton").pack(anchor=tk.W, padx=30, pady=10)
 
         # Кнопка для переведення
-        self.convert_button = tk.Button(self.root, text="Перевести", command=self.convert_number, bg="#4CAF50", fg="white", font=("Arial", 12))
-        self.convert_button.pack(pady=10)
+        self.convert_button = ttk.Button(self.page_frame, text="Перевести", command=self.convert, style="TButton")
+        self.convert_button.pack(pady=30, side=tk.LEFT, padx=20)
 
-        # Вивід результатів
-        self.frame_output = tk.Frame(self.root, bg="#F5F5F5")
-        self.frame_output.pack(pady=10)
+        # Кнопка для очищення результатів
+        self.clear_button = ttk.Button(self.page_frame, text="Очистити", command=self.clear_all, style="ClearButton.TButton")
+        self.clear_button.pack(pady=30, side=tk.LEFT)
 
-        self.results = {}
-        for idx, label in enumerate(["Двійкова:", "Вісімкова:", "Десяткова:", "Шістнадцяткова:"]):
-            tk.Label(self.frame_output, text=label, bg="#F5F5F5", font=("Arial", 12)).grid(row=idx, column=0, padx=5, pady=5)
-            self.results[label] = tk.Entry(self.frame_output, font=("Arial", 12), state='readonly', width=30)
-            self.results[label].grid(row=idx, column=1, padx=5, pady=5)
+        # Поле для результатів
+        result_frame = ttk.LabelFrame(self.page_frame, text="Результати", padding=10, labelanchor="n")
+        result_frame.pack(fill=tk.BOTH, expand=True)
 
-        # Кнопка для збереження результатів
-        self.save_button = tk.Button(self.root, text="Зберегти результати", command=self.save_results, bg="#2196F3", fg="white", font=("Arial", 12))
-        self.save_button.pack(pady=10)
+        self.result_text = tk.Text(result_frame, height=12, font=("Courier New", 16), state=tk.DISABLED, wrap=tk.WORD)
+        self.result_text.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-    def convert_number(self):
+    def show_file_conversion_page(self):
+        """Показати сторінку для переведення чисел з файлу"""
+        # Очищаємо поточний фрейм
+        for widget in self.page_frame.winfo_children():
+            widget.destroy()
+
+        # Заголовок сторінки
+        title_label = ttk.Label(self.page_frame, text="Переведення чисел з файлу", font=("Arial", 24, "bold"))
+        title_label.pack(pady=30)
+
+        # Чекбокси для вибору систем числення
+        self.system_vars = {
+            "Двійкова": tk.IntVar(value=0),
+            "Вісімкова": tk.IntVar(value=0),
+            "Десяткова": tk.IntVar(value=1),
+            "Шістнадцяткова": tk.IntVar(value=0),
+        }
+
+        checkbox_frame = ttk.Frame(self.page_frame)
+        checkbox_frame.pack(fill=tk.X, pady=20)
+
+        ttk.Label(checkbox_frame, text="Виберіть системи числення для переведення:", font=("Arial", 18)).pack(anchor=tk.W, pady=5)
+
+        for system, var in self.system_vars.items():
+            ttk.Checkbutton(checkbox_frame, text=system, variable=var, style="TCheckbutton").pack(anchor=tk.W, padx=30, pady=10)
+
+        # Кнопка для вибору файлу
+        load_button = ttk.Button(self.page_frame, text="Завантажити файл", command=self.load_file, style="TButton")
+        load_button.pack(pady=20)
+
+        # Кнопка для очищення результатів
+        clear_button = ttk.Button(self.page_frame, text="Очистити результати", command=self.clear_results, style="ClearButton.TButton")
+        clear_button.pack(pady=10)
+
+        # Поле для результатів
+        result_frame = ttk.LabelFrame(self.page_frame, text="Результати", padding=10, labelanchor="n")
+        result_frame.pack(fill=tk.BOTH, expand=True)
+
+        self.result_text = tk.Text(result_frame, height=12, font=("Courier New", 16), state=tk.DISABLED, wrap=tk.WORD)
+        self.result_text.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+    def convert(self):
+        """Обробка введеного числа вручну"""
+        number = self.input_entry.get()
+
+        if not number:
+            messagebox.showerror("Помилка", "Будь ласка, введіть число.")
+            return
+
         try:
-            number = self.entry_number.get()
-            base = int(self.entry_base.get())
-            decimal_number = convert_to_decimal(number, base)
-
-            binary = convert_to_binary(decimal_number)
-            octal = convert_to_octal(decimal_number)
-            hexadecimal = convert_to_hexadecimal(decimal_number)
-
-            self.results["Двійкова:"].config(state='normal')
-            self.results["Двійкова:"].delete(0, tk.END)
-            self.results["Двійкова:"].insert(0, binary)
-            self.results["Двійкова:"].config(state='readonly')
-
-            self.results["Вісімкова:"].config(state='normal')
-            self.results["Вісімкова:"].delete(0, tk.END)
-            self.results["Вісімкова:"].insert(0, octal)
-            self.results["Вісімкова:"].config(state='readonly')
-
-            self.results["Десяткова:"].config(state='normal')
-            self.results["Десяткова:"].delete(0, tk.END)
-            self.results["Десяткова:"].insert(0, str(decimal_number))
-            self.results["Десяткова:"].config(state='readonly')
-
-            self.results["Шістнадцяткова:"].config(state='normal')
-            self.results["Шістнадцяткова:"].delete(0, tk.END)
-            self.results["Шістнадцяткова:"].insert(0, hexadecimal)
-            self.results["Шістнадцяткова:"].config(state='readonly')
+            decimal_value = int(number)
         except ValueError:
-            messagebox.showerror("Помилка", "Неправильний ввід даних!")
+            messagebox.showerror("Помилка", "Введіть коректне десяткове число.")
+            return
 
-    def save_results(self):
+        results = {}
+        if self.system_vars["Двійкова"].get():
+            results["Двійкова"] = convert_to_binary(decimal_value)
+        if self.system_vars["Вісімкова"].get():
+            results["Вісімкова"] = convert_to_octal(decimal_value)
+        if self.system_vars["Десяткова"].get():
+            results["Десяткова"] = str(decimal_value)
+        if self.system_vars["Шістнадцяткова"].get():
+            results["Шістнадцяткова"] = convert_to_hexadecimal(decimal_value)
+
+        self.result_text.config(state=tk.NORMAL)
+        self.result_text.delete(1.0, tk.END)
+        if results:
+            for system, value in results.items():
+                self.result_text.insert(tk.END, f"{system}: {value}\n")
+        else:
+            self.result_text.insert(tk.END, "Будь ласка, виберіть хоча б одну систему числення.")
+        self.result_text.config(state=tk.DISABLED)
+
+    def load_file(self):
+        """Завантажити файл та обробити числа"""
+        file_path = filedialog.askopenfilename(title="Виберіть файл", filetypes=[("Текстові файли", "*.txt")])
+        if not file_path:
+            return
+
+        # Перевірка на вибір систем числення
+        if not any(var.get() for var in self.system_vars.values()):
+            messagebox.showerror("Помилка", "Будь ласка, виберіть хоча б одну систему числення.")
+            return
+
         try:
-            filename = filedialog.asksaveasfilename(defaultextension=".txt",
-                                                    filetypes=[("Text files", "*.txt")])
-            if filename:
-                results = {label: field.get() for label, field in self.results.items()}
-                save_results(filename, results)
-                messagebox.showinfo("Успіх", "Результати збережено!")
+            with open(file_path, "r") as file:
+                lines = file.readlines()
+
+            results = {}
+            for line in lines:
+                line = line.strip()
+                if not line.isdigit():  # Пропускаємо нечислові рядки
+                    continue
+
+                number = int(line)
+                result_for_number = {}
+
+                if self.system_vars["Двійкова"].get():
+                    result_for_number["Двійкова"] = convert_to_binary(number)
+                if self.system_vars["Вісімкова"].get():
+                    result_for_number["Вісімкова"] = convert_to_octal(number)
+                if self.system_vars["Шістнадцяткова"].get():
+                    result_for_number["Шістнадцяткова"] = convert_to_hexadecimal(number)
+                if self.system_vars["Десяткова"].get():
+                    result_for_number["Десяткова"] = str(number)
+
+                results[number] = result_for_number
+
+            # Виведення результатів
+            self.result_text.config(state=tk.NORMAL)
+            self.result_text.delete(1.0, tk.END)
+            for number, result in results.items():
+                self.result_text.insert(tk.END, f"{number}:\n")
+                if isinstance(result, str):
+                    self.result_text.insert(tk.END, f"  {result}\n")
+                else:
+                    for system, value in result.items():
+                        self.result_text.insert(tk.END, f"  {system}: {value}\n")
+                self.result_text.insert(tk.END, "\n")
+
+            self.result_text.config(state=tk.DISABLED)
+
         except Exception as e:
-            messagebox.showerror("Помилка", f"Не вдалося зберегти файл: {e}")
+            messagebox.showerror("Помилка", f"Не вдалося обробити файл: {e}")
+
+    def clear_all(self):
+        """Очистити введене число та результати"""
+        self.input_entry.delete(0, tk.END)
+        self.result_text.config(state=tk.NORMAL)
+        self.result_text.delete(1.0, tk.END)
+        self.result_text.config(state=tk.DISABLED)
+
+    def clear_results(self):
+        """Очистити результати на сторінці файлу"""
+        self.result_text.config(state=tk.NORMAL)
+        self.result_text.delete(1.0, tk.END)
+        self.result_text.config(state=tk.DISABLED)
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = ConverterApp(root)
+    root.mainloop()
