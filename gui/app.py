@@ -6,6 +6,7 @@ from converter.core import (
     convert_to_decimal,
     convert_to_hexadecimal,
 )
+import os
 
 class ConverterApp:
     def __init__(self, root):
@@ -34,6 +35,9 @@ class ConverterApp:
 
         # Початкова сторінка (Основна сторінка)
         self.show_main_page()
+
+        # Змінна для збереження шляху до файлу результатів
+        self.result_file_path = None
 
     def create_menu(self):
         menubar = tk.Menu(self.root)
@@ -111,6 +115,10 @@ class ConverterApp:
         self.clear_button = ttk.Button(self.page_frame, text="Очистити", command=self.clear_all, style="ClearButton.TButton")
         self.clear_button.pack(pady=30, side=tk.LEFT)
 
+        # Кнопка для збереження результатів у файл
+        self.save_button = ttk.Button(self.page_frame, text="Зберегти результати", command=self.save_results, style="TButton")
+        self.save_button.pack(pady=10)
+
         # Поле для результатів
         result_frame = ttk.LabelFrame(self.page_frame, text="Результати", padding=10, labelanchor="n")
         result_frame.pack(fill=tk.BOTH, expand=True)
@@ -160,7 +168,7 @@ class ConverterApp:
         self.result_text.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
     def convert(self):
-        """Обробка введеного числа вручну"""
+        """Переведення числа вручну"""
         number = self.input_entry.get()
 
         if not number:
@@ -198,7 +206,6 @@ class ConverterApp:
         if not file_path:
             return
 
-        # Перевірка на вибір систем числення
         if not any(var.get() for var in self.system_vars.values()):
             messagebox.showerror("Помилка", "Будь ласка, виберіть хоча б одну систему числення.")
             return
@@ -209,23 +216,25 @@ class ConverterApp:
 
             results = {}
             for line in lines:
-                line = line.strip()
-                if not line.isdigit():  # Пропускаємо нечислові рядки
-                    continue
+                numbers = line.strip().split(",")  # Розділяємо числа за комою
+                for number_str in numbers:
+                    number_str = number_str.strip()  # Очищаємо зайві пробіли
+                    if not number_str.isdigit():
+                        continue
 
-                number = int(line)
-                result_for_number = {}
+                    number = int(number_str)
+                    result_for_number = {}
 
-                if self.system_vars["Двійкова"].get():
-                    result_for_number["Двійкова"] = convert_to_binary(number)
-                if self.system_vars["Вісімкова"].get():
-                    result_for_number["Вісімкова"] = convert_to_octal(number)
-                if self.system_vars["Шістнадцяткова"].get():
-                    result_for_number["Шістнадцяткова"] = convert_to_hexadecimal(number)
-                if self.system_vars["Десяткова"].get():
-                    result_for_number["Десяткова"] = str(number)
+                    if self.system_vars["Двійкова"].get():
+                        result_for_number["Двійкова"] = convert_to_binary(number)
+                    if self.system_vars["Вісімкова"].get():
+                        result_for_number["Вісімкова"] = convert_to_octal(number)
+                    if self.system_vars["Шістнадцяткова"].get():
+                        result_for_number["Шістнадцяткова"] = convert_to_hexadecimal(number)
+                    if self.system_vars["Десяткова"].get():
+                        result_for_number["Десяткова"] = str(number)
 
-                results[number] = result_for_number
+                    results[number] = result_for_number
 
             # Виведення результатів
             self.result_text.config(state=tk.NORMAL)
@@ -244,6 +253,24 @@ class ConverterApp:
         except Exception as e:
             messagebox.showerror("Помилка", f"Не вдалося обробити файл: {e}")
 
+    def save_results(self):
+        """Зберегти результати в файл"""
+        if not self.result_text.get(1.0, tk.END).strip():
+            messagebox.showerror("Помилка", "Немає результатів для збереження.")
+            return
+
+        save_path = filedialog.asksaveasfilename(defaultextension=".txt", filetypes=[("Текстові файли", "*.txt")])
+        if not save_path:
+            return
+
+        try:
+            with open(save_path, "w") as file:
+                file.write(self.result_text.get(1.0, tk.END))
+            self.result_file_path = save_path
+            messagebox.showinfo("Успіх", f"Результати збережено в {save_path}")
+        except Exception as e:
+            messagebox.showerror("Помилка", f"Не вдалося зберегти файл: {e}")
+
     def clear_all(self):
         """Очистити введене число та результати"""
         self.input_entry.delete(0, tk.END)
@@ -251,11 +278,22 @@ class ConverterApp:
         self.result_text.delete(1.0, tk.END)
         self.result_text.config(state=tk.DISABLED)
 
+        # Видалення файлу результатів при очищенні
+        if self.result_file_path and os.path.exists(self.result_file_path):
+            os.remove(self.result_file_path)
+            self.result_file_path = None
+
     def clear_results(self):
         """Очистити результати на сторінці файлу"""
         self.result_text.config(state=tk.NORMAL)
         self.result_text.delete(1.0, tk.END)
         self.result_text.config(state=tk.DISABLED)
+
+        # Видалення файлу результатів при очищенні
+        if self.result_file_path and os.path.exists(self.result_file_path):
+            os.remove(self.result_file_path)
+            self.result_file_path = None
+
 
 if __name__ == "__main__":
     root = tk.Tk()
